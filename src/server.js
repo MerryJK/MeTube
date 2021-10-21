@@ -1,25 +1,37 @@
 import express from "express";
 import morgan from "morgan";
-import globalRouter from "./routers/globalRouter";
-import userRouter from "./routers/userRouter";
+import session from "express-session";
+import flash from "express-flash";
+import MongoStore from "connect-mongo";
+import rootRouter from "./routers/rootRouter";
 import videoRouter from "./routers/videoRouter";
-
-const PORT = 4000;
+import userRouter from "./routers/userRouter";
+import apiRouter from "./routers/apiRouter";
+import { localsMiddleware } from "./middlewares";
 
 const app = express();
+const logger = morgan("dev");
 
-app.use(morgan("dev"));
-
-app.use("/", globalRouter);
+app.set("view engine", "pug");
+app.set("views", process.cwd() + "/src/views");
+app.use(logger);
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(
+  session({
+    secret: process.env.COOKIE_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.DB_URL }),
+  })
+);
+app.use(flash());
+app.use(localsMiddleware);
+app.use("/uploads", express.static("uploads"));
+app.use("/static", express.static("assets"));
+app.use("/", rootRouter);
 app.use("/videos", videoRouter);
 app.use("/users", userRouter);
+app.use("/api", apiRouter);
 
-/*const handleHome =(req, res) => {
-    return res.send("<h1> Welcome to Home </h1>");
-};*/
-
-//app.get("/", handleHome);
-
-const handleListening = () => console.log(`Server listening on port http://localhost:${PORT}`);
-
-app.listen(PORT, handleListening);
+export default app;
